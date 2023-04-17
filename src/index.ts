@@ -9,17 +9,16 @@ type State = {
 }
 const initialState:State = { count: 0 };
 
-// rename of dispatch function
-// DOM update is side effect
-type Notification = (msg:CountEvent, state:State) => void;
-type ViewChange = (notify:Notification, state:State) => VNode;
-function viewChange(notify: Notification, state:State):VNode {
+// rename of dispatch function DOM update is side effect
+type Notification = (msg:CountEvent) => void;
+type VNodeChange = (notify:Notification, state:State) => VNode;
+function vNodeChange(stateChanged: Notification, state:State):VNode {
   return div([
     div({ className: 'mv2' }, `Count: ${state.count}`),
     button({ className: 'pv1 ph2 mr2', 
-      onclick: () => notify({kind:'add'}, state) }, '+'),
+      onclick: () => stateChanged({kind:'add'}) }, '+'),
     button({ className: 'pv1 ph2',
-      onclick: () => notify({kind:'subtract'}, state) }, '-'),
+      onclick: () => stateChanged({kind:'subtract'}) }, '-'),
   ]);
 }
 
@@ -43,28 +42,28 @@ function stateChange(evt:CountEvent, state:State):State {
 
 // impure code below
 // what is the Typescript type of viewChange?   
-function app(initialState:State, stateChange:StateChange, viewChange:ViewChange, appNode:HTMLElement): void {
+function app(initialState:State, stateChange:StateChange, vNodeChange:VNodeChange, appNode:HTMLElement): void {
  
     // initial render of root node
-  let state = initialState;
-  let currentVNode = viewChange(notifyViewChange, state)  as VNode;
+  let changedState = initialState;
+  let currentVNode = vNodeChange(notifyView, changedState)  as VNode;
   let rootNode = createElement(currentVNode);
   appNode.appendChild(rootNode);
  
   // subsequent rendering
-  function notifyViewChange(msg:CountEvent){
+  function notifyView(evt:CountEvent){
     // update model according to msg
-    state = stateChange(msg, state);
+    changedState = stateChange(evt, changedState);
     // update view according to model
-    const updatedView = viewChange(notifyViewChange, state);
+    const updatedVNode = vNodeChange(notifyView, changedState);
     // patch rootNode with diff between currentVNode and updatedView 
-    const patches = diff(currentVNode, updatedView);
+    const patches = diff(currentVNode, updatedVNode);
     rootNode = patch(rootNode, patches);
-    currentVNode = updatedView;
+    currentVNode = updatedVNode;
   }
 } 
 
 const appNode = document.getElementById('app');
 
 // handle side effects with app function (state update and DOM update)
-app(initialState, stateChange, viewChange, appNode);
+app(initialState, stateChange, vNodeChange, appNode);
